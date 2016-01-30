@@ -1,0 +1,20 @@
+template(name="homeRemote")
+  .container-fluid
+    .row
+      .col-lg-6.center-block
+        form.input-group
+          input(type="text" class="form-control" placeholder="Search...")
+          span.input-group-btn
+            button.btn.btn-default(type="submit") Go!
+
+    if hasTorrents
+      +ReactiveTable(layout="tableLayout_bootstrap" options=options)
+
+template(name="homeRemoteFooter")
+  with currentTorrent
+    .tab-bar
+      label.tab-bar__item.tab-bar--top-border__item
+        input(type="radio" name="options" checked="{{isChecked}}")
+        button.tab-bar__button.tab-bar--top-border__button {{title}}
+      +showControls this
+  else

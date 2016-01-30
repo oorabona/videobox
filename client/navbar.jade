@@ -1,0 +1,13 @@
+template(name="navbar")
+  .tab-bar.tab-bar--top
+    label.tab-bar__item
+      input(type="radio" name="options" value="menu" checked="{{isChecked}}")
+      button.tab-bar__button
+        i.fa.fa-bars
+    label.tab-bar__item.tab-bar--top-border__item
+      input(type="radio" name="options" value="home" checked="{{isChecked}}")
+      button.tab-bar__button.tab-bar--top-border__button VideoBox
+    label.tab-bar__item
+      input(type="radio" name="options" value="settings" checked="{{isChecked}}")
+      button.tab-bar__button
+        i.fa.fa-gears

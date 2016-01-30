@@ -1,0 +1,31 @@
+template(name="showControls")
+  label.tab-bar__item
+    input(type="radio" name="controls" value="prev600" checked="{{isChecked}}")
+    button.tab-bar__button
+      i.fa.fa-fast-backward
+  label.tab-bar__item
+    input(type="radio" name="controls" value="prev30" checked="{{isChecked}}")
+    button.tab-bar__button
+      i.fa.fa-step-backward
+  label.tab-bar__item
+    if pause
+      input(type="radio" name="controls" value="play" checked="{{isChecked}}")
+    else
+      input(type="radio" name="controls" value="pause" checked="{{isChecked}}")
+    button.tab-bar__button
+      if pause
+        i.fa.fa-play
+      else
+        i.fa.fa-pause
+  label.tab-bar__item
+    input(type="radio" name="controls" value="stop" checked="{{isChecked}}")
+    button.tab-bar__button
+      i.fa.fa-stop
+  label.tab-bar__item
+    input(type="radio" name="controls" value="next30" checked="{{isChecked}}")
+    button.tab-bar__button
+      i.fa.fa-step-forward
+  label.tab-bar__item
+    input(type="radio" name="controls" value="next600" checked="{{isChecked}}")
+    button.tab-bar__button
+      i.fa.fa-fast-forward

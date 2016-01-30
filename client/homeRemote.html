@@ -1,0 +1,96 @@
+<template name="tableLayout_bootstrap">
+  <div class="container-fluid">
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered no-footer" cellspacing="0" width="100%" role="grid">
+        {{#with header}}
+        <thead>
+          <tr role="row">
+            {{#each columns}}
+            <th>
+              {{title}}
+              {{> tableLayout_bootstrap_useractions this}}
+            </th>
+            {{/each}}
+            <th>
+              Actions
+            </th>
+          </tr>
+        </thead>
+        {{/with}}
+        {{#with data}}
+        <tbody>
+          {{#each rows}}
+          <tr role="row" class="{{isOdd rowIndex}}">
+            {{#each values}}
+              <td class="sorting_{{../rowIndex}}">{{value}}</td>
+            {{/each}}
+            <td>
+              <button class="btn btn-primary play">Play!</button>
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+        {{/with}}
+      </table>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {{#with data}}
+    <div class="col-xs-center">
+      <span role="status" aria-live="polite">Showing {{startIndex}} to {{endIndex}} of {{count}} entries</span>
+    </div>
+    {{/with}}
+    {{#if config.pagination}}
+      {{>tableLayout_bootstrap_pagination this}}
+    {{/if}}
+  </div>
+</template>
+
+<template name="tableLayout_bootstrap_useractions">
+  <a class="fa fa-times pull-right red" title="Remove column"></a>
+  {{#if $eq sortState 'asc'}}
+  <a class="fa fa-ban pull-right lb" title="Remove sort"></a>
+  {{else}} {{#if $eq sortState 'desc'}}
+  <a class="fa fa-chevron-up pull-right lb" title="Sort ascending"></a>
+  {{else}}
+  <a class="fa fa-chevron-down pull-right lb" title="Sort descending"></a>
+  {{/if}} {{/if}}
+</template>
+
+<template name="tableLayout_bootstrap_pagination">
+  <div class="row">
+    <div class="container-fluid">
+      <div class="col-xs-center">
+        <ul class="pagination">
+          <li class="paginate_button previous {{disabledIfFirstPage}}" tabindex="0"><a href="#">Previous</a></li>
+          {{#each data.pages}}
+            {{> pagination_page this}}
+          {{/each}}
+          <li class="paginate_button next {{disabledIfLastPage}}" tabindex="0"><a href="#">Next</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template name="pagination_page">
+  <li class="paginate_button {{#if active}}active{{/if}}" aria-controls="page" tabindex="0"><a href="#">{{page}}</a></li>
+</template>
+
+<template name="setSearch">
+  <div class="col-md-3">
+    <label>Search:<input type="search" class="form-control input-sm" placeholder="Type in something..." aria-controls="example"></label>
+  </div>
+</template>
+
+<template name="setLimit">
+  <div class="col-md-3">
+    <label>Show
+      <select name="limit" aria-controls="limit" class="form-control input-sm">
+        {{#each maxByPageOptions}}
+        <option value="{{this}}" {{selected this}}>{{this}}</option>
+        {{/each}}
+      </select> entries
+    </label>
+  </div>
+</template>

@@ -1,0 +1,54 @@
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="VideoBox">
+  <meta name="author" content="Olivier Orabona">
+
+  <title>VideoBox</title>
+
+  <meta name="msapplication-TileColor" content="#FFFFFF">
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+</head>
+
+<body>
+</body>
+
+<template name="layout">
+  {{>navbar}}
+  <section class="container-fluid">
+    {{>yield}}
+    {{>footer}}
+  </section>
+  {{>homeRemoteFooter}}
+  <!-- {{>modals}} -->
+</template>
+
+<template name="footer">
+  <p class="text-center">
+    &copy; Made with <span class="fa fa-heart red"></span>
+      at Paris, France
+  </p>
+</template>
+
+<template name="header">
+  <header class="header white-bg">
+    {{>navbar}}
+  </header>
+</template>
+
+<template name="content">
+  {{>yield}}
+</template>
+
+<template name="notFound">
+  <div class="row">
+    <div class="col-sm-12">
+      <div class="text-center">
+        <h1>Page not found at {{currentUrl}}</h1>
+        <h2>Redirecting in {{timeout}} seconds...</h2>
+      </div>
+    </div>
+  </div>
+</template>
