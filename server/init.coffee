@@ -15,6 +15,6 @@ Meteor.startup ->
       name: 'youtube'
       title: 'YouTube'
       tagline: 'Browse YouTube videos directly from here!'
-      image:'/yt.jpg'
+      image:'/Youtube.png'
     }
   ]
