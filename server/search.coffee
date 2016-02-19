@@ -17,4 +17,6 @@ Meteor.methods
       else if results
         fut.return results
     # search.send {hello:'world'}
+    search.on 'exit', (code) ->
+      console.log 'Search exit code', code
     fut.wait()
