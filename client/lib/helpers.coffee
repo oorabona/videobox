@@ -4,6 +4,15 @@ Template.registerHelper 'isLocalhost', ->
 
 Template.registerHelper 'isOdd', (val) -> if val % 2 then 'odd' else 'even'
 
-Template.registerHelper '$eq', (what, to) ->
-  what is to
-  
+Template.registerHelper '$eq', (what, that) ->
+  what is that
+
+# Template.registerHelper 'animationState', ->
+#   if App.get 'animationState'
+
+Template.registerHelper 'animationName', -> App.get 'animationName'
+
+Template.registerHelper 'currentTorrent', ->
+  torrent = App.get 'currentTorrent'
+  console.log 'get torrent', torrent
+  torrent
