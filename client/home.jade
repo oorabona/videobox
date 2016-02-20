@@ -1,20 +1,37 @@
 template(name="homeRemote")
-  .container-fluid
-    .row
-      .col-lg-6.center-block
-        form.input-group
-          input(type="text" class="form-control" placeholder="Search...")
-          span.input-group-btn
-            button.btn.btn-default(type="submit") Go!
+  with videoFullscreen
+    +videoFS this
+  else
+    .container-fluid
+      .row
+        .col-lg-6.center-block
+          form.input-group
+            input(type="text" class="form-control" placeholder="Search...")
+            span.input-group-btn
+              button.btn.btn-default(type="submit") Go!
+      with currentTorrent
+        .row.vertical-center
+          .sk-double-bounce(style="{{styles}}")
+            .sk-child.sk-double-bounce1(style="{{innerStyles}}")
+            .sk-child.sk-double-bounce2(style="{{innerStyles}}")
+          p.center-block {{#if peers.length}}{{peers.length}} peer(s){{else}}No peer{{/if}} connected!
 
-    if hasTorrents
-      +ReactiveTable(layout="tableLayout_bootstrap" options=options)
+      if hasTorrents
+        +ReactiveTable(layout="tableLayout_bootstrap" options=options)
+      else
+        .row
+          .col-lg-6.center-block
+            p No result found !
 
 template(name="homeRemoteFooter")
   with currentTorrent
-    .tab-bar
+    .tab-bar(class="{{animationName}} {{animation}}")
       label.tab-bar__item.tab-bar--top-border__item
-        input(type="radio" name="options" checked="{{isChecked}}")
+        input(type="radio" name="controls" value="title" checked="{{isChecked}}")
         button.tab-bar__button.tab-bar--top-border__button {{title}}
+      label.tab-bar__item.tab-bar--top-border__item
+        input(type="radio" name="controls" value="local" checked="{{isChecked}}")
+        button.tab-bar__button
+          i.fa.fa-external-link
       +showControls this
   else
