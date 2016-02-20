@@ -2,3 +2,17 @@ template(name="homeTV")
   .row.center-block
     .col-xs-6
       h1.text-center This is a TV
+  .row
+    each apps
+      .box(id="{{name}}")
+        img(src="{{image}}")
+        .overbox
+          .title.overtext {{title}}
+          .tagline.overtext {{tagline}}
+
+template(name="ytplayer")
+  .row.center-block
+    .col-xs-6
+      h1.text-center YouTube player
+  .row
+    #player
