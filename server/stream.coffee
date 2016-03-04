@@ -2,7 +2,10 @@
 fs = Meteor.npmRequire 'fs'
 Throttle = Meteor.npmRequire 'throttle'
 path = Meteor.npmRequire 'path'
+{exec} = Meteor.npmRequire 'child_process'
+es = Meteor.npmRequire 'event-stream'
 
+# FIXME: Some predefined variables that should definitely be parameters
 debug            = true
 strict           = false
 chunkSize        = 272144
@@ -10,7 +13,16 @@ cacheControl     = 'public, max-age=31536000, s-maxage=31536000'
 integrityCheck   = false
 throttle         = false
 
-returnResponse = (response, responseType, file, size, reqRange, take) ->
+###*
+  @name returnReponse
+  @param response (Object) - response object from WS middleware
+  @param responseType (Integer) - HTTP return code
+  @param file (String) - file name to stream from
+  @param reqRange (Object) - request range bytes
+  @param take (Integer) - how many bytes to stream
+  @param transcodeFn (Function) - transcode function that will be pipelined while streaming response
+###
+returnResponse = (response, responseType, file, size, reqRange, take, transcodeFn) ->
   streamErrorHandler = (error) ->
     response.writeHead 500
     response.end error.toString()
@@ -27,7 +39,7 @@ returnResponse = (response, responseType, file, size, reqRange, take) ->
       break
     when '404'
       console.warn "Debugger: [404] File not found: #{file}" if debug
-      text = "File Not Found :("
+      text = "Not Found :("
       response.writeHead 404,
         'Content-Length': text.length
         'Content-Type':   "text/plain"
@@ -44,6 +56,9 @@ returnResponse = (response, responseType, file, size, reqRange, take) ->
       stream = fs.createReadStream file
       stream.on('open', =>
         response.writeHead 200
+        # Include transcode function in the pipeline
+        if transcodeFn
+          stream.pipe es.child exec transcodeFn
         if throttle
           stream.pipe( new Throttle {bps: throttle, chunksize: chunkSize}
           ).pipe response
@@ -58,18 +73,46 @@ returnResponse = (response, responseType, file, size, reqRange, take) ->
       response.setHeader 'Transfer-Encoding', 'chunked'
       if throttle
         stream = fs.createReadStream file, {start: reqRange.start, end: reqRange.end}
-        stream.on('open', -> response.writeHead 206
+        stream.on('open', =>
+          response.writeHead 206
+          if transcodeFn
+            stream.pipe es.child exec transcodeFn
         ).on('error', streamErrorHandler
         ).on('end', -> response.end()
         ).pipe( new Throttle {bps: throttle, chunksize: chunkSize}
         ).pipe response
       else
         stream = fs.createReadStream file, {start: reqRange.start, end: reqRange.end}
-        stream.on('open', -> response.writeHead 206
+        stream.on('open', =>
+          response.writeHead 206
+          if transcodeFn
+            stream.pipe es.child exec transcodeFn
         ).on('error', streamErrorHandler
         ).on('data', (chunk) -> response.write chunk
         ).on 'end', -> response.end()
       break
+
+WebApp.connectHandlers.use '/video/vtt', (request, response, next) ->
+  {query} = request
+
+  playing = App.get 'playing'
+  unless playing
+    returnResponse response, '500', 'Could not find current playing file.'
+    return
+
+  {file, size} = playing
+
+  # FIXME: Of course this should be configurable !
+  file += '.srt'
+  console.log 'current file playing', file
+
+  response.setHeader 'Content-Type', 'text/plain'
+
+  if fs.existsSync file
+    returnResponse response, '200', file, size
+  else
+    returnResponse response, '404', file
+
 
 WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
   {query} = request
@@ -78,7 +121,7 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
   console.log 'current file playing', file
 
   unless fs.existsSync file
-    returnResponse response, '404'
+    returnResponse response, '404', file
 
   partiral     = false
   reqRange     = false
@@ -122,6 +165,9 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
     take = 4096000
     end  = start + take
 
+  transcodeFn = 'ffmpeg -i pipe:0 -c:v libx264 -c:a copy pipe:1'
+  # transcodeFn = undefined
+
   if partiral or (query.play and query.play == 'true')
     reqRange = {start, end}
     if isNaN(start) and not isNaN end
@@ -137,9 +183,9 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
     response.setHeader 'Cache-Control', 'private, maxage=10800, s-maxage=32400'
 
     if (strict and not request.headers.range) or reqRange.start >= fileStats.size or reqRange.end > fileStats.size
-      returnResponse response, '416', file, size, reqRange, take
+      returnResponse response, '416', file, size, reqRange, take, transcodeFn
     else
-      returnResponse response, '206', file, size, reqRange, take
+      returnResponse response, '206', file, size, reqRange, take, transcodeFn
   else
     response.setHeader 'Cache-Control', cacheControl
     returnResponse response, '200', file, size, reqRange, take
