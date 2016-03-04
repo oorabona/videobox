@@ -10,6 +10,3 @@ Template.videoFS.events
       if localUrl
         App.set 'showNavs', false
     , 5000
-
-# Template.videoFS.onRendered ->
-#   player = new MediaElementPlayer '#backgroundvid'

@@ -4,14 +4,6 @@ template(name="videoFS")
       source(src="/video/mp4?play" type='video/mp4')
       track(default src="/video/vtt")
 
-      <!-- Flash fallback -->
-      object(type="application/x-shockwave-flash" data="flash-player.swf?videoUrl=video/mp4")
-        param(name="movie" value="flash-player.swf?videoUrl=video/mp4")
-        param(name="allowfullscreen" value="true")
-        param(name="wmode" value="transparent")
-        param(name="flashvars" value="controlbar=over&amp;image=img/poster.jpg&amp;file=flash-player.swf?videoUrl=video/mp4")
-        img(alt="Poster image" src="img/poster.jpg" title="No video playback possible, please download the video from the link below")
-
       <!-- Offer download -->
       a(href="video/mp4?download") Download MP4
       p Fallback content to cover incompatibility issues
