@@ -53,7 +53,7 @@ spawnPlayer = (Player, file) ->
   pPlayer.on 'message', Meteor.bindEnvironment (m) ->
     console.log 'pPlayer PARENT got message', m
 
-downloader = spawn 'coffee', ["#{path.resolve '.'}/assets/app/player.coffee"], {env: process.env, cwd: process.cwd, stdio: [0,1,2,'ipc']}
+downloader = spawn 'coffee', ["#{path.resolve '.'}/assets/app/torrents.coffee"], {env: process.env, cwd: process.cwd, stdio: [0,1,2,'ipc']}
 
 Peers = []
 
