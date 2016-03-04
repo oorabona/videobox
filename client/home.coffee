@@ -98,8 +98,12 @@ Template.homeRemote.events
     evt.stopImmediatePropagation()
     input = tmpl.find 'input'
     console.log 'form submit', input.value
+
+    # A whole new search, clear history..
     Torrents.remove {}
     Files.remove {}
+    App.set 'currentFile', undefined
+    
     Meteor.call 'search', input.value, (err,res) ->
       if err
         throw err
