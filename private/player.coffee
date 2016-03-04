@@ -57,17 +57,28 @@ playCommand = (link, extensions) ->
     return
   return
 
-rUrl = new RegExp /magnet:\?xt=urn:btih:[a-z0-9]{20,50}&/
+reMagnet = new RegExp /magnet:\?xt=urn:btih:[a-z0-9]{20,50}&/
 
 process.on 'message', (msg) ->
   return unless msg
   {url, ext} = msg
 
-  url = null unless rUrl.test url
+  magnet = null unless reMagnet.test url
   rExt = new RegExp ext
   console.log 'what we have now', url
-  if url is null
-    console.log 'Wrong parameters! Need a valid magnet:link...'
+  if magnet is null
+    # It may be a file..
+    stat = fs.lstatSync url
+    if stat.isFile()
+      process.send
+        log: "Got stream!"
+        hasData: true
+        file: url
+        index: 0
+        size: stat.size
+        max: 1
+    else
+      process.send error: "There is something wrong... #{stat}"
   else
     playCommand url, rExt
   return

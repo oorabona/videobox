@@ -62,7 +62,7 @@ downloader.on 'exit', Meteor.bindEnvironment (code) ->
 downloader.on 'error', Meteor.bindEnvironment (e) ->
   Logs.emit 'message', 'error', "Caught exception #{e}"
 downloader.on 'message', Meteor.bindEnvironment (m) ->
-  console.log 'DOWNLOADER got message', m
+  # console.log 'DOWNLOADER got message', m
   {error, peer, log, hasData, file, size, index, maxFiles} = m
   if error
     console.error error
@@ -103,10 +103,16 @@ Meteor.methods
       console.log 'in play method', what
       Logs.emit 'message', 'currentTorrent', what
       ext = Config.findOne key: 'videoExt'
-      ext ?= key: 'videoExt', value: '.[mp4|avi|mkv|mpeg|mpg]$'
-      url = "magnet:?xt=urn:btih:#{what.hash}&"
 
-      downloader.send {url: url, ext: ext.value}
+      if what.hash
+        url = "magnet:?xt=urn:btih:#{what.hash}&"
+      else if what.path
+        url = what.path
+
+      if url
+        downloader.send {url: url, ext: ext.value}
+      else
+        console.error "Could not start playing file: #{url}"
     return
 
   'pause': ->
