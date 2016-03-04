@@ -106,13 +106,15 @@ WebApp.connectHandlers.use '/video/vtt', (request, response, next) ->
   file += '.srt'
   console.log 'current file playing', file
 
-  response.setHeader 'Content-Type', 'text/plain'
-
   if fs.existsSync file
-    returnResponse response, '200', file, size
+    text = fs.readFileSync file
   else
-    returnResponse response, '404', file
+    text = ''
 
+  response.writeHead 200,
+    'Content-Length': text.length
+    'Content-Type':   "text/plain"
+  response.end text
 
 WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
   {query} = request
@@ -165,8 +167,8 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
     take = 4096000
     end  = start + take
 
-  transcodeFn = 'ffmpeg -i pipe:0 -c:v libx264 -c:a copy pipe:1'
-  # transcodeFn = undefined
+  # transcodeFn = 'ffmpeg -i pipe:0 -c:v libx264 -c:a copy pipe:1'
+  transcodeFn = undefined
 
   if partiral or (query.play and query.play == 'true')
     reqRange = {start, end}
