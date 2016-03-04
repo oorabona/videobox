@@ -18,3 +18,4 @@ Meteor.startup ->
       image:'/Youtube.png'
     }
   ]
+  Config.upsert {key: 'videoExt'}, $set: value: '.[mp4|avi|mkv|mpeg|mpg]$'
