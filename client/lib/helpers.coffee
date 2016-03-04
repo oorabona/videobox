@@ -12,7 +12,7 @@ Template.registerHelper '$eq', (what, that) ->
 
 Template.registerHelper 'animationName', -> App.get 'animationName'
 
-Template.registerHelper 'currentTorrent', ->
-  torrent = App.get 'currentTorrent'
+Template.registerHelper 'currentFile', ->
+  torrent = App.get 'currentFile'
   console.log 'get torrent', torrent
   torrent
