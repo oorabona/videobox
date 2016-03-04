@@ -1,5 +1,6 @@
 # We do not need to sync this collection on server neither do we want to store anything.
 @Torrents = new Meteor.Collection null
+@Files = new Meteor.Collection null
 
 # Set default values for this page and only this page
 Page = new ReactiveDict
@@ -71,6 +72,8 @@ Template.homeRemote.helpers
     return false unless doc
     fields = _.keys doc
     fields.length isnt 0
+  file: ->
+    Files.find()
   options: ->
     fields = _.keys _.omit Torrents.findOne(), ['_id']
     console.log 'option fields', fields
@@ -96,13 +99,20 @@ Template.homeRemote.events
     input = tmpl.find 'input'
     console.log 'form submit', input.value
     Torrents.remove {}
+    Files.remove {}
     Meteor.call 'search', input.value, (err,res) ->
       if err
         throw err
       else
         {torrents} = res
-        torrents.forEach (torrent) ->
-          Torrents.insert torrent
+        {files} = res
+        if torrents
+          torrents.forEach (torrent) ->
+            Torrents.insert torrent
+        if files
+          files.forEach (file) ->
+            console.log 'file', file
+            Files.insert file
       return
 
     return
@@ -114,6 +124,18 @@ Template.homeRemote.events
     console.log 'clicked play', @
     return unless torrent
     Meteor.call 'play', torrent, (err,res) ->
+      console.log res
+      console.error err
+    return
+
+Template.linkLocalFile.events
+  'click': (evt, tmpl) ->
+    evt.preventDefault()
+    evt.stopImmediatePropagation()
+    file = Files.findOne _id: @_id
+    console.log 'clicked play local', @
+    return unless file
+    Meteor.call 'play', file, (err,res) ->
       console.log res
       console.error err
     return

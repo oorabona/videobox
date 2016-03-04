@@ -16,6 +16,11 @@ template(name="homeRemote")
             .sk-child.sk-double-bounce2(style="{{innerStyles}}")
           p.center-block {{#if peers.length}}{{peers.length}} peer(s){{else}}No peer{{/if}} connected!
 
+      each file
+        .row
+          .col-lg-6.center-block
+            +linkLocalFile this
+
       if hasTorrents
         +ReactiveTable(layout="tableLayout_bootstrap" options=options)
       else
@@ -35,3 +40,8 @@ template(name="homeRemoteFooter")
           i.fa.fa-external-link
       +showControls this
   else
+
+template(name="linkLocalFile")
+  h3
+    a {{name}}
+    small {{size}} bytes
