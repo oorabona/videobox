@@ -5,8 +5,8 @@ App.set 'showFooter', true
 
 # Update current torrent data as new peers are connecting...
 Logs.addListener 'peers', (peers) ->
-  torrent = App.get 'currentTorrent'
+  torrent = App.get 'currentFile'
   return unless torrent
   torrent.peers = peers
-  App.set 'currentTorrent', torrent
+  App.set 'currentFile', torrent
   return

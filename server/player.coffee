@@ -101,7 +101,7 @@ Meteor.methods
       handleAction 'play'
     else
       console.log 'in play method', what
-      Logs.emit 'message', 'currentTorrent', what
+      Logs.emit 'message', 'currentFile', what
       ext = Config.findOne key: 'videoExt'
 
       if what.hash

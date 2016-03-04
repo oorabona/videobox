@@ -9,7 +9,7 @@ template(name="homeRemote")
             input(type="text" class="form-control" placeholder="Search...")
             span.input-group-btn
               button.btn.btn-default(type="submit") Go!
-      with currentTorrent
+      with currentFile
         .row.vertical-center
           .sk-double-bounce(style="{{styles}}")
             .sk-child.sk-double-bounce1(style="{{innerStyles}}")
@@ -29,7 +29,7 @@ template(name="homeRemote")
             p No result found !
 
 template(name="homeRemoteFooter")
-  with currentTorrent
+  with currentFile
     .tab-bar(class="{{animationName}} {{animation}}")
       label.tab-bar__item.tab-bar--top-border__item
         input(type="radio" name="controls" value="title" checked="{{isChecked}}")
