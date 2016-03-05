@@ -1,5 +1,6 @@
 fs = require 'fs'
 WebTorrent = require 'webtorrent'
+util = require 'util'
 
 client = new WebTorrent()
 
@@ -53,6 +54,9 @@ playCommand = (link, extensions) ->
         process.send error: "Pipe error: #{e}"
         @end()
         return
+      .once 'end', (code) ->
+        console.log 'end event'
+        App.set 'finishedDownload', true
 
     return
   return
@@ -67,18 +71,7 @@ process.on 'message', (msg) ->
   rExt = new RegExp ext
   console.log 'what we have now', url
   if magnet is null
-    # It may be a file..
-    stat = fs.lstatSync url
-    if stat.isFile()
-      process.send
-        log: "Got stream!"
-        hasData: true
-        file: url
-        index: 0
-        size: stat.size
-        max: 1
-    else
-      process.send error: "There is something wrong... #{stat}"
+    process.send error: "Wrong parameter, need a valid magnet URI, not: #{util.inspect url}"
   else
     playCommand url, rExt
   return
@@ -86,4 +79,4 @@ process.on 'message', (msg) ->
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
 
 if process.send
-  process.send { program: 'Downloader Engine for VideoBox', version: '0.2.0'}
+  process.send { program: 'Torrents Downloader Engine for VideoBox', version: '0.3.0'}
