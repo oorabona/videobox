@@ -60,6 +60,7 @@ mongo-id@1.0.1
 mquandalle:bower@1.5.2_1
 mquandalle:jade@0.4.8
 mquandalle:jade-compiler@0.4.5
+mystor:device-detection@0.2.0
 npm-container@1.2.0
 npm-mongo@1.4.39_1
 observe-sequence@1.0.7
