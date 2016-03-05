@@ -1,4 +1,4 @@
 {
   "throttle": "1.0.3",
-  "stream-transcoder": "0.0.5"
+  "through2": "2.0.1"
 }
