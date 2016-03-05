@@ -1,3 +1,16 @@
+template(name="homeRemoteFooter")
+  with currentFile
+    .tab-bar(class="{{animationName}} {{animation}}")
+      label.tab-bar__item.tab-bar--top-border__item
+        input(type="radio" name="controls" value="title" checked="{{isChecked}}")
+        button.tab-bar__button.tab-bar--top-border__button {{title}}
+      label.tab-bar__item.tab-bar--top-border__item
+        input(type="radio" name="controls" value="local" checked="{{isChecked}}")
+        button.tab-bar__button
+          i.fa.fa-external-link
+      +showControls this
+  else
+
 template(name="showControls")
   label.tab-bar__item
     input(type="radio" name="controls" value="prev600" checked="{{isChecked}}")
