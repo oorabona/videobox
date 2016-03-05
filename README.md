@@ -12,11 +12,12 @@ Several projects exists:
 * [TV.js](https://github.com/SamyPesse/tv.js/) nice interface written in Javascript
 
 This piece of software has a different purpose and implementation. This software is designed to be a web application, with two views: one is the local display and the other, the remote controller.
-Being able to play indistinctly from either your remote controller or your remote display, searching and playing happening in the same device or in a 1:1 (1 remote/1 display) or N:1 (N remotes/1 display) sounds interesting :smile:
+Being able to play indistinctly from either your remote controller or your remote display, searching and playing happening in the same device or in a 1:1 (1 remote/1 display) or N:1 (N remotes/1 display).. A new world of possibilities :smile:
 
-[WebTorrent API](https://webtorrent.io/) provides a nice API to handle torrent download. Add a search engine up front, spawn your favorite video player once you get something in your stream, put some glue together and that's it !
+[WebTorrent API](https://webtorrent.io/) provides a nice API to handle torrent download.
+[TorrentProject](https://torrentproject.se/) is the definitive source for torrents.
 
-To minimize adherence on external software being ```spawn```-ed, I tried to integrate most of the code by using Javascript implementations. The only software that should be spawned would then be the interpreter (__coffee__) to take advantage of the 4-CPU armv7l on the Raspberry Pi 2... :wink:
+To minimize adherence on external software being ```spawn```-ed, I tried to integrate most of the code by using their Javascript implementations. The only software spawned is the interpreter (__coffee__) to still take advantage of the 4-CPU armv7l on the Raspberry Pi 2... :wink:
 
 > ### Notes:
 > * At the moment the only software spawned is the player
@@ -27,7 +28,7 @@ Pure Javascript implementations exist, like [Node-OpenMAX](https://github.com/je
 
 It has been tested on both a ```Ubuntu Linux``` running on x64 virtualized Core i7 and a Raspberry Pi 2 with ```Raspbian```.
 
-Still, this is at the moment more a proof-of-concept than a ready-to-be-used solution. There are still a lot of ```console.log``` out there :smile:
+Still, this is at the moment more a proof-of-concept than a ready-to-be-used solution. There are still a lot of ```console.log``` out there... :smile:
 
 # Usage
 
@@ -69,13 +70,22 @@ Takes some time, then run the following script to get the latest NodeJS 0.10 bra
 Wait some more time, but now we have both ```node``` and ```npm``` globally installed!
 This will help for startup script later on...
 
+Since you have those super powers, you can keep going and install __CoffeeScript__ globally.
+
+```
+# npm i -g coffee-script
+```
+
+Of course you can install it with your user account as long as ```coffee``` can be
+called from the command line !
+
 > From now on we can drop our super powers !
 
 We need to install some dependencies manually.
 These can be installed either in the user context or system-wide (for that you need to add ```-g```).
 
 ```
-$ npm i webtorrent torrent-project-api q
+$ npm i webtorrent torrent-project-api q chokidar
 ```
 
 That should do it !
@@ -87,7 +97,8 @@ Here are some ideas of improvements:
 - [REMOTE] implement ```settings``` with config page (system players, etc) and search APIs
 - [DISPLAY] better error handling when playing file (mplayer does not like MZ files!)
 - [DISPLAY] implement 'widget' like elements on TV screen for weather/headlines/etc.
-- [COMMON] add new ```search``` APIs, sources (RSS ?), ```subtitles``` API
+- [COMMON] add new ```search``` APIs, sources,... (RSS, YT, Dailymotion, Twitch etc.)
+- [COMMON] implement ```subtitles``` API search/find/display
 - [COMMON] better plugin support (add envelope to bind messages events)
 - [COMMON] implement ```YouTube```, ```Vimeo```, etc players as plugins
 
