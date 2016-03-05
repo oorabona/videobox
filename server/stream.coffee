@@ -2,14 +2,12 @@
 fs = Meteor.npmRequire 'fs'
 Throttle = Meteor.npmRequire 'throttle'
 path = Meteor.npmRequire 'path'
-{exec} = Meteor.npmRequire 'child_process'
-es = Meteor.npmRequire 'event-stream'
+util = Meteor.npmRequire 'util'
 
 # FIXME: Some predefined variables that should definitely be parameters
 debug            = true
 strict           = false
 chunkSize        = 272144
-cacheControl     = 'public, max-age=31536000, s-maxage=31536000'
 integrityCheck   = false
 throttle         = false
 
@@ -20,14 +18,24 @@ throttle         = false
   @param file (String) - file name to stream from
   @param reqRange (Object) - request range bytes
   @param take (Integer) - how many bytes to stream
-  @param transcodeFn (Function) - transcode function that will be pipelined while streaming response
 ###
-returnResponse = (response, responseType, file, size, reqRange, take, transcodeFn) ->
+returnResponse = (response, responseType, file, size, reqRange, take) ->
   streamErrorHandler = (error) ->
     response.writeHead 500
     response.end error.toString()
 
   switch responseType
+    when '503'
+      console.warn "Debugger: [503] Server processing your request: #{isTranscoding} #{file}" if debug
+      isTranscoding = App.get 'transcoding'
+      text = "Server processing your request: #{isTranscoding}"
+      response.writeHead 503,
+        'Content-Type':   'text/plain'
+        'Cache-Control':  'no-cache'
+        'Content-Length': text.length
+        'Retry-After': '10'
+      response.end text
+      break
     when '400'
       console.warn "Debugger: [400] Content-Length mismatch!: #{file}" if debug
       text = "Content-Length mismatch!"
@@ -42,6 +50,7 @@ returnResponse = (response, responseType, file, size, reqRange, take, transcodeF
       text = "Not Found :("
       response.writeHead 404,
         'Content-Length': text.length
+        'Cache-Control':  'no-cache'
         'Content-Type':   "text/plain"
       response.end text
       break
@@ -49,6 +58,7 @@ returnResponse = (response, responseType, file, size, reqRange, take, transcodeF
       console.info "Debugger: [416] Content-Range is not specified!: #{file}" if debug
       response.writeHead 416,
         'Content-Range': "bytes */#{size}"
+        'Cache-Control':  'no-cache'
       response.end()
       break
     when '200'
@@ -56,9 +66,6 @@ returnResponse = (response, responseType, file, size, reqRange, take, transcodeF
       stream = fs.createReadStream file
       stream.on('open', =>
         response.writeHead 200
-        # Include transcode function in the pipeline
-        if transcodeFn
-          stream.pipe es.child exec transcodeFn
         if throttle
           stream.pipe( new Throttle {bps: throttle, chunksize: chunkSize}
           ).pipe response
@@ -75,21 +82,22 @@ returnResponse = (response, responseType, file, size, reqRange, take, transcodeF
         stream = fs.createReadStream file, {start: reqRange.start, end: reqRange.end}
         stream.on('open', =>
           response.writeHead 206
-          if transcodeFn
-            stream.pipe es.child exec transcodeFn
         ).on('error', streamErrorHandler
         ).on('end', -> response.end()
         ).pipe( new Throttle {bps: throttle, chunksize: chunkSize}
         ).pipe response
       else
         stream = fs.createReadStream file, {start: reqRange.start, end: reqRange.end}
+        current = reqRange.start
         stream.on('open', =>
           response.writeHead 206
-          if transcodeFn
-            stream.pipe es.child exec transcodeFn
         ).on('error', streamErrorHandler
-        ).on('data', (chunk) -> response.write chunk
-        ).on 'end', -> response.end()
+        ).on('close', ->
+        ).on('data', (chunk) ->
+          response.write chunk
+        ).on 'end', ->
+          response.end()
+
       break
 
 WebApp.connectHandlers.use '/video/vtt', (request, response, next) ->
@@ -125,14 +133,27 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
   unless fs.existsSync file
     returnResponse response, '404', file
 
+  # Someone is looking for MP4 files, check if we have this...
+  if '.mp4' isnt path.extname file
+    # Check if we have a .web (transcoded file) at our disposal.
+    convertedFile = "#{file}.web"
+
+    # If such file exists, we keep on using it. Otherwise, check if we match our
+    # expected output file format.
+    if fs.existsSync convertedFile
+      file = convertedFile
+    else
+      returnResponse response, '503', file
+
   partiral     = false
   reqRange     = false
   fileStats    = fs.statSync file
 
-  if integrityCheck
-    console.log 'checking', fileStats.size, 'expected', size
-    if fileStats.size isnt size
-      returnResponse response, '400', file, size
+  # If we do not have the same file sizes between the original file and the
+  # transcode file, set size to be the transcoded file. This also impact when
+  # movie is currently being transcoded!
+  if fileStats.size isnt size
+    {size} = fileStats
 
   if query.download and query.download == 'true'
     dispositionType = 'attachment; '
@@ -149,6 +170,10 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
   response.setHeader 'Accept-Ranges', 'bytes'
   response.setHeader 'Last-Modified', fileStats.updatedAt?.toUTCString() if fileStats.updatedAt?.toUTCString()
   response.setHeader 'Connection', 'keep-alive'
+  response.setHeader 'Cache-Control', 'no-cache'
+
+  # FIXME: definitely the way to go for good streaming, but needs to be adjusted.
+  # response.setHeader 'X-Content-Duration', '2586'
 
   if request.headers.range
     partiral = true
@@ -167,9 +192,6 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
     take = 4096000
     end  = start + take
 
-  # transcodeFn = 'ffmpeg -i pipe:0 -c:v libx264 -c:a copy pipe:1'
-  transcodeFn = undefined
-
   if partiral or (query.play and query.play == 'true')
     reqRange = {start, end}
     if isNaN(start) and not isNaN end
@@ -182,12 +204,12 @@ WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
     reqRange.end = fileStats.size - 1 if ((start + take) >= fileStats.size)
     response.setHeader 'Pragma', 'private'
     response.setHeader 'Expires', new Date(+new Date + 1000*32400).toUTCString()
-    response.setHeader 'Cache-Control', 'private, maxage=10800, s-maxage=32400'
+    # response.setHeader 'Cache-Control', 'private, maxage=10800, s-maxage=32400'
 
     if (strict and not request.headers.range) or reqRange.start >= fileStats.size or reqRange.end > fileStats.size
-      returnResponse response, '416', file, size, reqRange, take, transcodeFn
+      returnResponse response, '416', file, size, reqRange, take
     else
-      returnResponse response, '206', file, size, reqRange, take, transcodeFn
+      returnResponse response, '206', file, size, reqRange, take
   else
-    response.setHeader 'Cache-Control', cacheControl
-    returnResponse response, '200', file, size, reqRange, take
+    response.setHeader 'Cache-Control', 'public, max-age=31536000, s-maxage=31536000'
+    returnResponse response, '200', file, size
