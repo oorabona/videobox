@@ -1,6 +1,8 @@
 {fork, spawn} = Meteor.npmRequire 'child_process'
 path = Meteor.npmRequire 'path'
 Future = Meteor.npmRequire 'fibers/future'
+util = Meteor.npmRequire 'util'
+fs = Meteor.npmRequire 'fs'
 
 pPlayer = null
 
@@ -57,11 +59,7 @@ downloader = spawn 'coffee', ["#{path.resolve '.'}/assets/app/torrents.coffee"],
 
 Peers = []
 
-downloader.on 'exit', Meteor.bindEnvironment (code) ->
-  Logs.emit 'message', 'debug', "Client script exited with code #{code}"
-downloader.on 'error', Meteor.bindEnvironment (e) ->
-  Logs.emit 'message', 'error', "Caught exception #{e}"
-downloader.on 'message', Meteor.bindEnvironment (m) ->
+notify = (m) ->
   # console.log 'DOWNLOADER got message', m
   {error, peer, log, hasData, file, size, index, maxFiles} = m
   if error
@@ -91,6 +89,12 @@ downloader.on 'message', Meteor.bindEnvironment (m) ->
       unless maxFiles > 2
         pPlayer.kill()
 
+downloader.on 'exit', Meteor.bindEnvironment (code) ->
+  Logs.emit 'message', 'debug', "Client script exited with code #{code}"
+downloader.on 'error', Meteor.bindEnvironment (e) ->
+  Logs.emit 'message', 'error', "Caught exception #{e}"
+downloader.on 'message', Meteor.bindEnvironment notify
+
 Meteor.methods
   'play': (what) ->
     @unblock()
@@ -104,15 +108,25 @@ Meteor.methods
       Logs.emit 'message', 'currentFile', what
       ext = Config.findOne key: 'videoExt'
 
+      # It may be a torrent or a file...
       if what.hash
-        url = "magnet:?xt=urn:btih:#{what.hash}&"
+        downloader.send {url: "magnet:?xt=urn:btih:#{what.hash}&", ext: ext.value}
       else if what.path
-        url = what.path
-
-      if url
-        downloader.send {url: url, ext: ext.value}
+        stat = fs.lstatSync what.path
+        if stat.isFile()
+          App.set 'finishedDownload', true
+          notify {
+            log: "Got stream!"
+            hasData: true
+            file: what.path
+            index: 0
+            size: stat.size
+            max: 1
+          }
+        else
+          console.error "Could not start playing local file: #{what.path}"
       else
-        console.error "Could not start playing file: #{url}"
+        throw new Meteor.Error 500, "Wrong parameters: #{util.inspect what}"
     return
 
   'pause': ->
