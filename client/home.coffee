@@ -30,24 +30,8 @@ Template.homeRemote.onRendered ->
       for key, value of res
         App.set key, JSON.parse value
 
-Template.homeRemoteFooter.helpers
-  animation: ->
-    showNavs = App.get 'showNavs'
-    if showNavs
-      'show'
-    else 'hide'
-
 Template.homeRemote.helpers
   # Set styles for peers animation
-  styles: ->
-    ratio = (@peers?.length|0) / (@seeds + @leechs)
-    # We consider that 50% of connected peers is enough to consider it 'green'
-    ratio *= 2
-    if ratio > 1 then ratio = 1
-    calc = Math.ceil 40 + ratio * 400
-    if isNaN calc then calc = 40
-    "width: #{calc}px; height: #{calc}px;"
-
   innerStyles: ->
     ratio = (@peers?.length|0) / (@seeds + @leechs)
     ratio *= 2
@@ -61,11 +45,11 @@ Template.homeRemote.helpers
     "background-color:##{redStr}#{greenStr}00;"
 
   # If we have a video url endpoint forward it to the inner template.
-  videoFullscreen: ->
-    vfs = App.get 'localUrl'
-    if vfs
+  playInBrowser: ->
+    playInBrowser = App.get 'playInBrowser'
+    if playInBrowser
       App.set 'showNavs', false
-      VideoUrl: vfs
+    playInBrowser
   hasTorrents: ->
     doc = Torrents.findOne()
     console.log 'hastorrents', doc
@@ -103,7 +87,7 @@ Template.homeRemote.events
     Torrents.remove {}
     Files.remove {}
     App.set 'currentFile', undefined
-    
+
     Meteor.call 'search', input.value, (err,res) ->
       if err
         throw err
@@ -204,52 +188,3 @@ Template.tableLayout_bootstrap_pagination.events
     evt.stopImmediatePropagation()
     Page.set 'currentPage', @data.page + 1
     return
-
-# Handle video controls
-Template.homeRemoteFooter.events
-  'change [name="controls"]': (evt, tmpl) ->
-    {value} = evt.currentTarget
-    console.log 'change', @
-    localUrl = App.get 'localUrl'
-
-    # Reset checked/unchecked value (with animation and stuff) with 100ms delay.
-    ct = Meteor.setTimeout ->
-      evt.currentTarget.checked = false
-      Meteor.clearTimeout ct
-    , 100
-    console.log 'has localUrl', localUrl
-    # If we are playing on the web, handle HTML5 video tag from here
-    if localUrl
-      video = document.getElementById 'backgroundvid'
-      # video = new MediaElementPlayer '#backgroundvid'
-      if video
-        switch value
-          when 'play'
-            video.play()
-            App.set 'status', 'play'
-          when 'pause'
-            video.pause()
-            App.set 'status', 'pause'
-          when 'stop', 'local'
-            App.set 'localUrl', false
-            App.set 'showNavs', true
-          when 'next30' then video.currentTime += 30
-          when 'next600' then video.currentTime += 600
-          when 'prev30' then video.currentTime -= 30
-          when 'prev600' then video.currentTime -= 600
-          else console.error 'Unknown command', value
-      else
-        alert 'No video tag !'
-    else if value is 'local'
-      App.set 'localUrl', true
-    else
-      # If we a remote controlling video on a distant device/display (like TV),
-      # forward this server side.
-      Meteor.call value, @, (err,res) ->
-        console.log res
-        console.error err
-    return
-
-Template.showControls.helpers
-  pause: ->
-    'pause' is App.get 'status'

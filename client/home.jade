@@ -1,5 +1,5 @@
 template(name="homeRemote")
-  with videoFullscreen
+  with playInBrowser
     +videoFS this
   else
     .container-fluid
@@ -11,35 +11,22 @@ template(name="homeRemote")
               button.btn.btn-default(type="submit") Go!
       with currentFile
         .row.vertical-center
-          .sk-double-bounce(style="{{styles}}")
+          .sk-double-bounce(style="width:40px;height:40px;")
             .sk-child.sk-double-bounce1(style="{{innerStyles}}")
             .sk-child.sk-double-bounce2(style="{{innerStyles}}")
           p.center-block {{#if peers.length}}{{peers.length}} peer(s){{else}}No peer{{/if}} connected!
-
-      each file
-        .row
-          .col-lg-6.center-block
-            +linkLocalFile this
-
-      if hasTorrents
-        +ReactiveTable(layout="tableLayout_bootstrap" options=options)
       else
-        .row
-          .col-lg-6.center-block
-            p No result found !
+        each file
+          .row
+            .col-lg-6.center-block
+              +linkLocalFile this
 
-template(name="homeRemoteFooter")
-  with currentFile
-    .tab-bar(class="{{animationName}} {{animation}}")
-      label.tab-bar__item.tab-bar--top-border__item
-        input(type="radio" name="controls" value="title" checked="{{isChecked}}")
-        button.tab-bar__button.tab-bar--top-border__button {{title}}
-      label.tab-bar__item.tab-bar--top-border__item
-        input(type="radio" name="controls" value="local" checked="{{isChecked}}")
-        button.tab-bar__button
-          i.fa.fa-external-link
-      +showControls this
-  else
+        if hasTorrents
+          +ReactiveTable(layout="tableLayout_bootstrap" options=options)
+        else
+          .row
+            .col-lg-6.center-block
+              p No result found !
 
 template(name="linkLocalFile")
   h3
