@@ -19,3 +19,6 @@ Meteor.startup ->
     }
   ]
   Config.upsert {key: 'videoExt'}, $set: value: '.[mp4|avi|mkv|mpeg|mpg]$'
+  Config.upsert {key: 'transcoder'}, $set: value:
+    cmd: '/usr/bin/ffmpeg'
+    args: ['-i', 'pipe:0', '-c:v', 'libx264', '-c:a', 'copy', '-movflags', 'isml+frag_keyframe', '-f', 'mp4', '-']
