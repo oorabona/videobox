@@ -147,6 +147,8 @@ Meteor.methods
   'stop': ->
     @unblock()
     handleAction 'stop'
+    # Make sure also that the player really exists.
+    pPlayer?.kill()
     return
 
   'prev30': ->
