@@ -26,10 +26,11 @@ handleAction = (action) ->
   if action and mapping[action] and pPlayer isnt null
     pPlayer.stdin.write mapping[action], -> console.log 'sent "', mapping[action],'"'
 
-# Spawn video player and handle its I/O
-# Input:
-#   Player: program configuration
-#   file: a file Object (file: String, size: Integer)
+###*
+  @name Spawn video player and handle its I/O
+  @param Player (Object) - program configuration
+  @param file (Object) - a file Object (file: String, size: Integer)
+###
 filesList = []
 spawnPlayer = (Player, file) ->
   if pPlayer isnt null
@@ -55,45 +56,7 @@ spawnPlayer = (Player, file) ->
   pPlayer.on 'message', Meteor.bindEnvironment (m) ->
     console.log 'pPlayer PARENT got message', m
 
-downloader = spawn 'coffee', ["#{path.resolve '.'}/assets/app/torrents.coffee"], {env: process.env, cwd: process.cwd, stdio: [0,1,2,'ipc']}
-
 Peers = []
-
-notify = (m) ->
-  # console.log 'DOWNLOADER got message', m
-  {error, peer, log, hasData, file, size, index, maxFiles} = m
-  if error
-    console.error error
-  if log
-    Logs.emit 'message', 'log', log
-  if peer
-    if -1 is Peers.indexOf peer
-      Peers.push peer
-      Logs.emit 'peers', Peers
-  if hasData and file
-    Player = Config.findOne({key: 'player'})?.value
-    unless Player
-      Logs.emit 'message', 'error', "Cannot find player settings! Abort."
-      return
-
-    console.log 'pPlayer', !!pPlayer
-    # If pPlayer is not null, we need to see if we should kill the current playing
-    # file (that would be the case if we are seeing a sample and now the main file is viewable).
-    # Or maybe we are downloading a group of files (a whole season e.g) and
-    # we should not stop but push somewhere the information on the next file to
-    # be played.
-    if pPlayer is null
-      spawnPlayer.call @, Player, {file: file, size: size}
-    else
-      filesList.push file: file, size: size
-      unless maxFiles > 2
-        pPlayer.kill()
-
-downloader.on 'exit', Meteor.bindEnvironment (code) ->
-  Logs.emit 'message', 'debug', "Client script exited with code #{code}"
-downloader.on 'error', Meteor.bindEnvironment (e) ->
-  Logs.emit 'message', 'error', "Caught exception #{e}"
-downloader.on 'message', Meteor.bindEnvironment notify
 
 Meteor.methods
   'play': (what) ->
@@ -108,13 +71,59 @@ Meteor.methods
       Logs.emit 'message', 'currentFile', what
       ext = Config.findOne key: 'videoExt'
 
+      notify = (m) ->
+        {error, peer, log, hasData, file, size, index, finishedDownload, maxFiles} = m
+        if error
+          console.error error
+        if log
+          Logs.emit 'message', 'log', log
+        if finishedDownload
+          console.log 'finished download!!'
+          Logs.emit 'message', 'finishedDownload', finishedDownload
+          downloader.kill()
+        if peer
+          if -1 is Peers.indexOf peer
+            Peers.push peer
+            Logs.emit 'peers', Peers
+        if hasData and file
+          defaultPlayer = Config.findOne key: 'defaultPlayer'
+          unless !!defaultPlayer
+            throw new Meteor.Error 500, 'No configuration available for defaultPlayer!'
+
+          Player = Config.findOne({key: defaultPlayer.value})?.value
+          unless Player
+            Logs.emit 'message', 'error', "Cannot find player settings! Abort."
+            return
+
+          console.log 'pPlayer', !!pPlayer
+          # If pPlayer is not null, we need to see if we should kill the current playing
+          # file (that would be the case if we are seeing a sample and now the main file is viewable).
+          # Or maybe we are downloading a group of files (a whole season e.g) and
+          # we should not stop but push somewhere the information on the next file to
+          # be played.
+          if pPlayer is null
+            spawnPlayer.call @, Player, {file: file, size: size}
+          else
+            filesList.push file: file, size: size
+            unless maxFiles > 2
+              pPlayer.kill()
+
       # It may be a torrent or a file...
       if what.hash
+        downloader = spawn 'coffee', ["#{path.resolve '.'}/assets/app/torrents.coffee"],
+        { env: process.env, cwd: process.cwd, stdio: ['ipc'] }
+
+        downloader.on 'exit', Meteor.bindEnvironment (code) ->
+          Logs.emit 'message', 'debug', "Client script exited with code #{code}"
+        downloader.on 'error', Meteor.bindEnvironment (e) ->
+          Logs.emit 'message', 'error', "Caught exception #{e}"
+        downloader.on 'message', Meteor.bindEnvironment notify
+
         downloader.send {url: "magnet:?xt=urn:btih:#{what.hash}&", ext: ext.value}
       else if what.path
         stat = fs.lstatSync what.path
         if stat.isFile()
-          App.set 'finishedDownload', true
+          Logs.emit 'message', 'finishedDownload', true
           notify {
             log: "Got stream!"
             hasData: true
