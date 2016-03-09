@@ -2,31 +2,37 @@
 path = Meteor.npmRequire 'path'
 Future = Meteor.npmRequire 'fibers/future'
 
-Meteor.methods
-  search: (what, category) ->
-    @unblock()
-    search = spawn 'coffee', ["#{path.resolve '.'}/assets/app/search.coffee"], {env: process.env, cwd: process.cwd, stdio: [0,1,2,'ipc']}
+search = spawn 'coffee', ["#{path.resolve '.'}/assets/app/search.coffee"], {env: process.env, cwd: process.cwd, stdio: [0,1,2,'ipc']}
 
-    fut = new Future()
+search.on 'exit', (code) ->
+  console.log 'Search exit code', code
+
+search.on 'message', Meteor.bindEnvironment (m) ->
+  console.log 'SEARCH PARENT got message', m
+  {error, results} = m
+  if error
+    console.error error
+    Logs.emit 'message', 'error', error
+  else if results
+    res = {}
+    results.forEach (result) ->
+      {torrents, local} = result
+      if torrents then res.torrents = torrents
+      if local
+        res.local = local.filter (file) -> reExt.test file.name
+    Logs.emit 'message', 'results', res
+
+reExt = null
+
+Meteor.methods
+  search: (searchType, what, category) ->
+    @unblock()
+    if typeof searchType is 'string'
+      searchType = [ searchType ]
+    unless Array.isArray searchType
+      throw new Meteor.Error 500, 'Wrong parameters: need to know what to search!'
+
     ext = Config.findOne key: 'videoExt'
     reExt = new RegExp ext.value, 'i'
-    search.on 'message', (m) ->
-      console.log 'SEARCH PARENT got message', m
-      {error, results} = m
-      if error
-        console.error error
-        fut.return error
-      else if results
-        {torrents} = results[0]
-        {files} = results[1]
-        res =
-          torrents: torrents
-          files: files.filter (file) -> reExt.test file.name
-        fut.return res
 
-    search.on 'exit', (code) ->
-      console.log 'Search exit code', code
-
-    search.send {order: 'seeds', category: 'all', what: what}
-
-    fut.wait()
+    search.send {search: searchType, order: 'seeds', category: category, what: what}

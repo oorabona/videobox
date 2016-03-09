@@ -15,6 +15,21 @@ Logs.addListener 'message', (key, value) ->
   console.log 'got message', key, value
   App.set key, value
 
+# Gather search results and dispatch to local collections.
+# NOTE: might be easier to just stick with App.get since it is already a reactive
+# data source. But then we might lack search facilities of ReactiveTable package.
+Tracker.autorun ->
+  results = App.get 'results'
+  return unless results
+  {torrents, local} = results
+  if torrents
+    torrents.forEach (torrent) ->
+      Torrents.insert torrent
+  if local
+    local.forEach (file) ->
+      console.log 'file', file
+      Files.insert file
+
 Template.homeTV.onRendered ->
   if isLocal
     $('body').addClass 'tv'
@@ -88,19 +103,11 @@ Template.homeRemote.events
     Files.remove {}
     App.set 'currentFile', undefined
 
-    Meteor.call 'search', input.value, (err,res) ->
+    Meteor.call 'search', ['torrents','local'], input.value, 'all', (err,res) ->
       if err
         throw err
       else
-        {torrents} = res
-        {files} = res
-        if torrents
-          torrents.forEach (torrent) ->
-            Torrents.insert torrent
-        if files
-          files.forEach (file) ->
-            console.log 'file', file
-            Files.insert file
+        console.log res
       return
 
     return
