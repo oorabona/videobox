@@ -4,7 +4,7 @@ util = require 'util'
 
 client = new WebTorrent()
 
-playCommand = (link, extensions) ->
+download = (link, extensions) ->
   client.add link, (torrent) ->
     # Got torrent metadata!
     {infoHash, path} = torrent
@@ -55,8 +55,10 @@ playCommand = (link, extensions) ->
         @end()
         return
       .once 'end', (code) ->
-        console.log 'end event'
-        App.set 'finishedDownload', true
+        console.log '[TORRENT] end event'
+        process.send
+          log: 'Finished download'
+          finishedDownload: true
 
     return
   return
@@ -73,7 +75,7 @@ process.on 'message', (msg) ->
   if magnet is null
     process.send error: "Wrong parameter, need a valid magnet URI, not: #{util.inspect url}"
   else
-    playCommand url, rExt
+    download url, rExt
   return
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'

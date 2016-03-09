@@ -23,13 +23,19 @@ allDone = (promises) ->
   deferred.promise
 
 ###*
+  @name searchTorrent (wrapped around TorrentProject::search)
   @param query (String) - the search query the user entered
   @param options (Object) - an options object
   Searches the pirate bay for videos with the given query and returns
   a list of torrent objects
 ###
-
 searchTorrent = Q.nfbind tp.search
+
+###*
+  @name searchLocal (searches local - mounted - files)
+  @param where (String) - path to search from
+  @param what (String) - what to search
+###
 searchLocal = (where, what) ->
   files = []
   reStr = what.replace /\ /g, '.'
@@ -51,7 +57,7 @@ searchLocal = (where, what) ->
     watcher.on 'ready', ->
       console.log 'finished'
       watcher.close()
-      accept 
+      accept
         total: files.length
         local: files
     .on 'error', (err) ->
