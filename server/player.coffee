@@ -147,8 +147,12 @@ Meteor.methods
   'stop': ->
     @unblock()
     handleAction 'stop'
+
     # Make sure also that the player really exists.
-    pPlayer?.kill()
+    # FIXME: Delay configurable...
+    Meteor.setTimeout ->
+      pPlayer?.kill()
+    , 5000
     return
 
   'prev30': ->
