@@ -124,92 +124,97 @@ WebApp.connectHandlers.use '/video/vtt', (request, response, next) ->
     'Content-Type':   "text/plain"
   response.end text
 
-WebApp.connectHandlers.use '/video/mp4', (request, response, next) ->
-  {query} = request
+createExtensionStream = (mediaType) ->
+  (request, response, next) ->
+    {query} = request
 
-  {file, size} = App.get 'playing'
-  console.log 'current file playing', file
+    {file, size} = App.get 'playing'
+    console.log 'current file playing', file
 
-  unless fs.existsSync file
-    returnResponse response, '404', file
+    unless fs.existsSync file
+      returnResponse response, '404', file
 
-  # Someone is looking for MP4 files, check if we have this...
-  if '.mp4' isnt path.extname file
-    # Check if we have a .web (transcoded file) at our disposal.
-    convertedFile = "#{file}.web"
+    # Someone is looking for MP4 files, check if we have this...
+    if ".#{mediaType}" isnt path.extname file
+      # Check if we have a transcoded file with the corresponding extension at our disposal.
+      convertedFile = "#{file}.#{mediaType}"
 
-    # If such file exists, we keep on using it. Otherwise, check if we match our
-    # expected output file format.
-    if fs.existsSync convertedFile
-      file = convertedFile
+      # If such file exists, we keep on using it. Otherwise, check if we match our
+      # expected output file format.
+      if fs.existsSync convertedFile
+        file = convertedFile
+      else
+        App.set 'transcoding', mediaType
+        returnResponse response, '503', file
+
+    partiral     = false
+    reqRange     = false
+    fileStats    = fs.statSync file
+
+    # If we do not have the same file sizes between the original file and the
+    # transcode file, set size to be the transcoded file. This also impact when
+    # movie is currently being transcoded!
+    if fileStats.size isnt size
+      {size} = fileStats
+
+    if query.download and query.download == 'true'
+      dispositionType = 'attachment; '
     else
-      returnResponse response, '503', file
+      dispositionType = 'inline; '
 
-  partiral     = false
-  reqRange     = false
-  fileStats    = fs.statSync file
+    # Extract file name from the path
+    name = path.basename file
+    dispositionName = "filename=\"#{encodeURIComponent(name)}\"; filename=*UTF-8\"#{encodeURIComponent(name)}\"; "
+    dispositionEncoding = 'charset=utf-8'
 
-  # If we do not have the same file sizes between the original file and the
-  # transcode file, set size to be the transcoded file. This also impact when
-  # movie is currently being transcoded!
-  if fileStats.size isnt size
-    {size} = fileStats
+    response.setHeader 'Content-Type', "video/#{mediaType}"
+    response.setHeader 'Content-Disposition', dispositionType + dispositionName + dispositionEncoding
+    response.setHeader 'Accept-Ranges', 'bytes'
+    response.setHeader 'Last-Modified', fileStats.updatedAt?.toUTCString() if fileStats.updatedAt?.toUTCString()
+    response.setHeader 'Connection', 'keep-alive'
+    response.setHeader 'Cache-Control', 'no-cache'
 
-  if query.download and query.download == 'true'
-    dispositionType = 'attachment; '
-  else
-    dispositionType = 'inline; '
+    # FIXME: definitely the way to go for good streaming, but needs to be adjusted.
+    # response.setHeader 'X-Content-Duration', '2586'
 
-  # Extract file name from the path
-  name = path.basename file
-  dispositionName     = "filename=\"#{encodeURIComponent(name)}\"; filename=*UTF-8\"#{encodeURIComponent(name)}\"; "
-  dispositionEncoding = 'charset=utf-8'
-
-  response.setHeader 'Content-Type', 'video/mp4'
-  response.setHeader 'Content-Disposition', dispositionType + dispositionName + dispositionEncoding
-  response.setHeader 'Accept-Ranges', 'bytes'
-  response.setHeader 'Last-Modified', fileStats.updatedAt?.toUTCString() if fileStats.updatedAt?.toUTCString()
-  response.setHeader 'Connection', 'keep-alive'
-  response.setHeader 'Cache-Control', 'no-cache'
-
-  # FIXME: definitely the way to go for good streaming, but needs to be adjusted.
-  # response.setHeader 'X-Content-Duration', '2586'
-
-  if request.headers.range
-    partiral = true
-    array    = request.headers.range.split /bytes=([0-9]*)-([0-9]*)/
-    start    = parseInt array[1]
-    end      = parseInt array[2]
-    if isNaN(end)
-      end    = if (start + chunkSize) < fileStats.size then start + chunkSize else fileStats.size
-    take     = end - start
-  else
-    start    = 0
-    end      = undefined
-    take     = chunkSize
-
-  if take > 4096000
-    take = 4096000
-    end  = start + take
-
-  if partiral or (query.play and query.play == 'true')
-    reqRange = {start, end}
-    if isNaN(start) and not isNaN end
-      reqRange.start = end - take
-      reqRange.end   = end
-    if not isNaN(start) and isNaN end
-      reqRange.start = start
-      reqRange.end   = start + take
-
-    reqRange.end = fileStats.size - 1 if ((start + take) >= fileStats.size)
-    response.setHeader 'Pragma', 'private'
-    response.setHeader 'Expires', new Date(+new Date + 1000*32400).toUTCString()
-    # response.setHeader 'Cache-Control', 'private, maxage=10800, s-maxage=32400'
-
-    if (strict and not request.headers.range) or reqRange.start >= fileStats.size or reqRange.end > fileStats.size
-      returnResponse response, '416', file, size, reqRange, take
+    if request.headers.range
+      partiral = true
+      array    = request.headers.range.split /bytes=([0-9]*)-([0-9]*)/
+      start    = parseInt array[1]
+      end      = parseInt array[2]
+      if isNaN(end)
+        end    = if (start + chunkSize) < fileStats.size then start + chunkSize else fileStats.size
+      take     = end - start
     else
-      returnResponse response, '206', file, size, reqRange, take
-  else
-    response.setHeader 'Cache-Control', 'public, max-age=31536000, s-maxage=31536000'
-    returnResponse response, '200', file, size
+      start    = 0
+      end      = undefined
+      take     = chunkSize
+
+    if take > 4096000
+      take = 4096000
+      end  = start + take
+
+    if partiral or (query.play and query.play == 'true')
+      reqRange = {start, end}
+      if isNaN(start) and not isNaN end
+        reqRange.start = end - take
+        reqRange.end   = end
+      if not isNaN(start) and isNaN end
+        reqRange.start = start
+        reqRange.end   = start + take
+
+      reqRange.end = fileStats.size - 1 if ((start + take) >= fileStats.size)
+      response.setHeader 'Pragma', 'private'
+      response.setHeader 'Expires', new Date(+new Date + 1000*32400).toUTCString()
+      # response.setHeader 'Cache-Control', 'private, maxage=10800, s-maxage=32400'
+
+      if (strict and not request.headers.range) or reqRange.start >= fileStats.size or reqRange.end > fileStats.size
+        returnResponse response, '416', file, size, reqRange, take
+      else
+        returnResponse response, '206', file, size, reqRange, take
+    else
+      response.setHeader 'Cache-Control', 'public, max-age=31536000, s-maxage=31536000'
+      returnResponse response, '200', file, size
+
+WebApp.connectHandlers.use '/video/h264', createExtensionStream 'mp4'
+WebApp.connectHandlers.use '/video/webm', createExtensionStream 'webm'
