@@ -29,8 +29,8 @@ allDone = (promises) ->
   a list of torrent objects
 ###
 
-SearchTorrent = Q.nfbind tp.search
-SearchLocal = (where, what) ->
+searchTorrent = Q.nfbind tp.search
+searchLocal = (where, what) ->
   files = []
   reStr = what.replace /\ /g, '.'
   regexp = new RegExp reStr, 'i'
@@ -51,30 +51,41 @@ SearchLocal = (where, what) ->
     watcher.on 'ready', ->
       console.log 'finished'
       watcher.close()
-      res = total: files.length
-      res.files = files
-      accept res
+      accept 
+        total: files.length
+        local: files
     .on 'error', (err) ->
       console.log 'error', err
       watcher.close()
       reject err
 
-searchCommand = (query, order, category) ->
-  allDone [SearchTorrent(query, {
-    filter: category
-    order: order
-  }), SearchLocal '/tmp/webtorrent', query]
+process.on 'message', (m) ->
+  console.log 'SEARCH message received', m
+  {search, order, category, what} = m
+  if typeof search is 'string'
+    search = [ search ]
+
+  searchFn = search.map (searchType) ->
+    switch searchType
+      when 'torrents'
+        searchTorrent what, {
+          filter: category
+          order: order
+        }
+      when 'local'
+        searchLocal '/tmp/webtorrent', what
+      when 'subs'
+        -> console.log 'looking for subs', m
+      else
+        console.error 'Do not know what to do with:', searchType, search
+
+  allDone searchFn
   .then (results) ->
     console.log 'results', results
     process.send results: results
   .catch (err) ->
     process.send error: "Caught exception: #{err}"
 
-process.on 'message', (m) ->
-  console.log 'SEARCH message received', m
-  {order, category, what} = m
-  searchCommand(what, order, category).thenResolve()
-
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
 
-process.send? { program: 'Search Engine for VideoBox', version: '0.1.0' }
+process.send? { program: 'Search Engine for VideoBox', version: '0.3.0' }
