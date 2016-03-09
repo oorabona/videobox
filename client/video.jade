@@ -1,9 +1,17 @@
 template(name="videoFS")
   figure
-    video#backgroundvid(autoplay poster="placeholder.jpg")
-      source(src="/video/mp4?play" type='video/mp4')
-      track(default src="/video/vtt")
+    with urlAndVideoType
+      if isDesktop or isTablet
+        video#backgroundvid(autoplay poster="placeholder.jpg")
+          source(src="{{url}}")
+          track(default src="/video/vtt")
 
-      <!-- Offer download -->
-      a(href="video/mp4?download") Download MP4
-      p Fallback content to cover incompatibility issues
+          p Browser does not support HTML5 video tag!
+      else
+        p You should see your default video player.
+        p.small Otherwise click below:
+        a(href="{{url}}") Download {{type}}
+    else
+      p No available codec found!
+      each toArray mediaType
+        p.small {{key}}: {{value}}
