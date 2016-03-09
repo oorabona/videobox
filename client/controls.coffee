@@ -1,6 +1,4 @@
 # Handle video controls
-clicks = 0
-
 Template.homeRemoteFooter.helpers
   animation: ->
     showNavs = App.get 'showNavs'
@@ -12,23 +10,14 @@ Template.homeRemoteFooter.events
   'change [name="controls"]': (evt, tmpl) ->
     {value} = evt.currentTarget
     console.log 'change', @
-    clicks++
-
-    # Set up timeout for show/hide controls
-    controls = Meteor.setTimeout ->
-      console.log 'hello cb', clicks
-      # Because we land here when clicks is already 1 (first time).
-      if clicks is 0
-        console.log 'clicks', clicks, 'showNavs should be false'
-        playInBrowser = App.get 'playInBrowser'
-        if playInBrowser
-          App.set 'showNavs', false
-      else
-        clicks--
-      Meteor.clearTimeout controls
-    , 2000
 
     playInBrowser = App.get 'playInBrowser'
+    App.set 'controlIsActive', true
+
+    controls = Meteor.setTimeout ->
+      App.set 'controlIsActive', false
+      Meteor.clearTimeout controls
+    , 5000
 
     # Reset checked/unchecked value (with animation and stuff) with 100ms delay.
     ct = Meteor.setTimeout ->
@@ -39,6 +28,8 @@ Template.homeRemoteFooter.events
     console.log 'has playInBrowser', playInBrowser
     # If we are playing on the web, handle HTML5 video tag from here
     if playInBrowser
+      App.set 'controlIsActive', true
+      Tracker.flush()
       video = document.getElementById 'backgroundvid'
       # video = new MediaElementPlayer '#backgroundvid'
       if video
