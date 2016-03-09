@@ -99,6 +99,15 @@ returnResponse = (response, responseType, file, size, reqRange, take) ->
           response.end()
 
       break
+    else
+      console.info "Debugger: [#{responseType}]: #{file}" if debug
+      text = file   # A bit hacky though...
+      response.writeHead 404,
+        'Content-Length': text.length
+        'Cache-Control':  'no-cache'
+        'Content-Type':   "text/plain"
+      response.end text
+
 
 WebApp.connectHandlers.use '/video/vtt', (request, response, next) ->
   {query} = request
@@ -124,28 +133,47 @@ WebApp.connectHandlers.use '/video/vtt', (request, response, next) ->
     'Content-Type':   "text/plain"
   response.end text
 
-createExtensionStream = (mediaType) ->
+###*
+  @name createExtensionStream helps create a endpoint handler
+  @param outputExtension (String) - media type to create (h)
+###
+createExtensionStream = (outputExtension) ->
   (request, response, next) ->
     {query} = request
 
-    {file, size} = App.get 'playing'
+    playing = App.get 'playing'
+    unless playing
+      return returnResponse response, '404', 'Playing file not found!'
+
+    {file, size} = playing
+    unless file
+      return returnResponse response, '404', 'Playing file not found!'
+
     console.log 'current file playing', file
 
     unless fs.existsSync file
-      returnResponse response, '404', file
+      return returnResponse response, '404', file
 
-    # Someone is looking for MP4 files, check if we have this...
-    if ".#{mediaType}" isnt path.extname file
+    # If we do not have this extension, we will need to transcode first.
+    if ".#{outputExtension}" isnt path.extname file
       # Check if we have a transcoded file with the corresponding extension at our disposal.
-      convertedFile = "#{file}.#{mediaType}"
+      convertedFile = "#{file}.#{outputExtension}"
 
       # If such file exists, we keep on using it. Otherwise, check if we match our
       # expected output file format.
       if fs.existsSync convertedFile
         file = convertedFile
       else
-        App.set 'transcoding', mediaType
-        returnResponse response, '503', file
+        config = Config.findOne key: "transcoder_#{outputExtension}"
+        config = config?.value
+        console.log 'transcoding', config, outputExtension
+        unless config
+          return returnResponse response, 500, 'No transcoding possible with these parameters.'
+
+        config.input = file
+        config.output = convertedFile
+        App.set 'transcoding', config
+        return returnResponse response, '503', file
 
     partiral     = false
     reqRange     = false
@@ -167,7 +195,7 @@ createExtensionStream = (mediaType) ->
     dispositionName = "filename=\"#{encodeURIComponent(name)}\"; filename=*UTF-8\"#{encodeURIComponent(name)}\"; "
     dispositionEncoding = 'charset=utf-8'
 
-    response.setHeader 'Content-Type', "video/#{mediaType}"
+    response.setHeader 'Content-Type', "video/#{outputExtension}"
     response.setHeader 'Content-Disposition', dispositionType + dispositionName + dispositionEncoding
     response.setHeader 'Accept-Ranges', 'bytes'
     response.setHeader 'Last-Modified', fileStats.updatedAt?.toUTCString() if fileStats.updatedAt?.toUTCString()
